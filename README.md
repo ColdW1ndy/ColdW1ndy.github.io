@@ -1,69 +1,62 @@
 # ColdW1ndy.github.io
 
-静态资源分发仓库，通过 GitHub Pages 对外提供一个稳定、可直接引入的 JavaScript 地址。
+静态分发仓库，通过 GitHub Pages 对外提供一个稳定、可直接安装的用户脚本地址。
 
-## 分发地址
+## 安装地址
 
 ```
-https://coldw1ndy.github.io/dist/main.js
+https://coldw1ndy.github.io/annotator.user.js
 ```
 
 页面入口：<https://coldw1ndy.github.io/>
 
-## 引入方式
+地址以 `.user.js` 结尾是必需的：Tampermonkey / ScriptCat 依靠这个后缀拦截浏览器导航并弹出安装界面，换成 `.js` 或其他名字会退化成在浏览器里直接打开源码。
 
-浏览器直接引入（会挂载全局变量 `ColdW1ndy`）：
+## 使用方式
 
-```html
-<script src="https://coldw1ndy.github.io/dist/main.js"></script>
-<script>
-  ColdW1ndy.hello('world'); // 确认脚本已加载
-</script>
-```
-
-打包器 / ES 模块：
-
-```js
-import ColdW1ndy from 'https://coldw1ndy.github.io/dist/main.js';
-```
+1. 先安装用户脚本管理器：Tampermonkey 或 ScriptCat。
+2. 打开上面的安装地址，确认安装。
+3. 首次运行时脚本会提示输入解密密码，该密码由分发者单独提供。
 
 ## 缓存穿透
 
-GitHub Pages 的 CDN 缓存约 10 分钟。发布新版本后，在地址后追加变化的查询串即可让使用者立即拿到新文件：
+GitHub Pages 的 CDN 缓存约 10 分钟。脚本管理器通常能自行检查更新；需要立刻拿到新版本时，在地址后追加变化的查询串：
 
 ```
-https://coldw1ndy.github.io/dist/main.js?v=1.0.0
+https://coldw1ndy.github.io/annotator.user.js?v=1.2.4
 ```
 
 ## 目录结构
 
 ```
 .
-├── index.html      落地页：展示分发地址，并自动加载 dist/main.js 验证链路
-├── dist/
-│   └── main.js     对外分发的脚本（当前为占位实现，可直接替换内容）
-├── .nojekyll       关闭 Jekyll 处理，原样发布所有文件
+├── annotator.user.js   对外分发的用户脚本
+├── index.html          落地页：展示安装地址与使用前提
+├── .nojekyll           关闭 Jekyll 处理，原样发布所有文件
 └── README.md
 ```
 
-## 替换脚本
+## 更新脚本
 
-直接覆盖 `dist/main.js` 的内容即可，无需改动任何配置：
+脚本本体是「加载器 + 加密负载」结构：元数据块声明匹配站点与 `@version`，正文用 PBKDF2 + AES-CBC 解密内置的 Base64 负载后执行。更新流程：
+
+1. 在本地用加密工具加密新的源码，得到 Base64 密文。
+2. 用该密文替换脚本中 `CIPHER_BASE64` 常量的值。
+3. 提升元数据块里的 `@version`，否则脚本管理器不会识别为新版本。
+4. 提交推送：
 
 ```powershell
-# 用你自己的脚本替换占位实现
-Copy-Item -Force .\your-script.js .\dist\main.js
-
-git add dist/main.js
-git commit -m "Update dist/main.js"
+git add annotator.user.js
+git commit -m "Update annotator.user.js"
 git push
 ```
 
-推送后约 1 分钟生效。若使用 CDN 或浏览器缓存了旧版本，请配合 `?v=` 查询串访问。
+推送后约 1 分钟生效。
 
 ## 维护须知
 
 - 发布源：`main` 分支根目录，GitHub Pages 自动构建，无需 CI。
 - 本仓库已放置 `.nojekyll`，文件按原样发布；请勿删除，否则根路径将改由 Jekyll 渲染 `README.md`。
 - 仓库根路径由 `index.html` 提供，因此不要依赖 Jekyll 主题渲染 Markdown。
-- 本仓库仅存放可公开的静态文件，请勿提交密钥、令牌或任何隐私数据。
+- 加密工具 `encrypt.html` 仅存在于本地，已通过 `.git/info/exclude` 排除，不会进入版本库。
+- 解密密码不属于仓库内容，不要写进本仓库的任何文件；仓库是公开的。
