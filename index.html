@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ColdW1ndy · JS 分发页</title>
+<meta name="description" content="ColdW1ndy 的静态脚本分发页，提供 dist/main.js 的稳定访问地址。">
+<style>
+  :root {
+    color-scheme: light dark;
+    --fg: #1a1d21;
+    --muted: #6b7280;
+    --bg: #ffffff;
+    --card: #f6f7f9;
+    --line: #e3e6ea;
+    --accent: #2563eb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e8eaed;
+      --muted: #9aa1ab;
+      --bg: #101214;
+      --card: #191c1f;
+      --line: #2a2f35;
+      --accent: #6ea8fe;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 3rem 1.25rem 4rem;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  main { max-width: 46rem; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+  .sub { color: var(--muted); margin: 0 0 2.25rem; font-size: .95rem; }
+  h2 { font-size: 1rem; margin: 2rem 0 .6rem; }
+  .urlrow {
+    display: flex; gap: .5rem; align-items: stretch;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: .5rem .5rem .5rem .85rem;
+  }
+  .urlrow code {
+    flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .875rem; line-height: 2; align-self: center;
+  }
+  button {
+    font: inherit; font-size: .85rem; padding: .45rem .9rem; cursor: pointer;
+    color: #fff; background: var(--accent); border: 0; border-radius: 7px;
+    white-space: nowrap;
+  }
+  button:active { transform: translateY(1px); }
+  pre {
+    margin: 0; padding: .9rem 1rem; overflow-x: auto;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .82rem; line-height: 1.6;
+  }
+  .note { color: var(--muted); font-size: .85rem; margin: .7rem 0 0; }
+  .status {
+    margin-top: 2.25rem; padding: .75rem 1rem; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--card); font-size: .875rem;
+  }
+  .dot { display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; background: var(--muted); margin-right: .5rem; }
+  .dot.ok { background: #16a34a; }
+  .dot.bad { background: #dc2626; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>ColdW1ndy · JS 分发页</h1>
+  <p class="sub">本页只做一件事：提供一个稳定、可被任意站点直接引入的 JavaScript 地址。</p>
+
+  <h2>分发地址</h2>
+  <div class="urlrow">
+    <code id="distUrl">https://coldw1ndy.github.io/dist/main.js</code>
+    <button id="copyBtn" type="button">复制</button>
+  </div>
+
+  <h2>引入方式</h2>
+  <pre>&lt;script src="https://coldw1ndy.github.io/dist/main.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  ColdW1ndy.hello('world');   // 确认脚本已加载
+&lt;/script&gt;</pre>
+  <p class="note">脚本同时支持 CommonJS / AMD，可作为 ES 模块导入：<br>
+    <code>import ColdW1ndy from 'https://coldw1ndy.github.io/dist/main.js';</code></p>
+
+  <h2>缓存穿透</h2>
+  <pre>https://coldw1ndy.github.io/dist/main.js?v=1.0.0</pre>
+  <p class="note">GitHub Pages 的 CDN 缓存约 10 分钟。发布新版本后，在地址后追加变化的查询串即可让使用者立刻拿到新文件。</p>
+
+  <div class="status" id="status">
+    <span class="dot" id="dot"></span><span id="statusText">正在检测 dist/main.js …</span>
+  </div>
+</main>
+
+<script>
+(function () {
+  var btn = document.getElementById('copyBtn');
+  var urlEl = document.getElementById('distUrl');
+  btn.addEventListener('click', function () {
+    var text = urlEl.textContent;
+    var done = function () {
+      btn.textContent = '已复制';
+      setTimeout(function () { btn.textContent = '复制'; }, 1500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { fallback(text, done); });
+    } else {
+      fallback(text, done);
+    }
+  });
+
+  function fallback(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { /* 忽略 */ }
+    document.body.removeChild(ta);
+  }
+
+  // 真实加载 dist/main.js，验证分发链路是否通畅
+  var dot = document.getElementById('dot');
+  var text = document.getElementById('statusText');
+  var s = document.createElement('script');
+  s.src = './dist/main.js?probe=' + Date.now();
+  s.onload = function () {
+    var v = (window.ColdW1ndy && window.ColdW1ndy.version) ? window.ColdW1ndy.version() : '未知';
+    dot.className = 'dot ok';
+    text.textContent = '分发正常：dist/main.js 已加载，版本 v' + v + '。';
+  };
+  s.onerror = function () {
+    dot.className = 'dot bad';
+    text.textContent = '加载失败：无法获取 dist/main.js，请检查文件是否已推送。';
+  };
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>
